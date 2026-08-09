@@ -11,23 +11,16 @@ class R2R:
             for j in range(len(sigma)):
                 if i == j:
                     continue
-                elif i < j:
-                    r2r_sigma.append(R2R._R2R_lesser_operation(sigma))
-                elif i > j:
-                    r2r_sigma.append(R2R._R2R_greater_operation(sigma))
+                else:
+                    sigma_j = sigma[j]
+                    sigma_new = np.delete(sigma, j)
+                    sigma_new = np.insert(sigma_new, i, sigma_j)
+                    r2r_sigma.append(sigma_new)
 
-        return r2r_sigma
+        return list(np.unique(np.array(r2r_sigma), axis=0))
 
     @staticmethod
     def draw(r2r_sigma: list[np.ndarray]) -> np.ndarray:
         idx = floor(random.uniform(0,1) * len(r2r_sigma))
 
         return r2r_sigma[idx]
-
-    @staticmethod
-    def _R2R_lesser_operation(sigma: np.ndarray) -> np.ndarray:
-        pass
-
-    @staticmethod
-    def _R2R_greater_operation(sigma: np.ndarray) -> np.ndarray:
-        pass

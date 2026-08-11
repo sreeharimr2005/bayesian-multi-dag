@@ -8,7 +8,7 @@ import random
 
 class OrderBasedLearner:
     def __init__(self,
-                 X: list[np.ndarray],
+                 X: np.ndarray,
                  sigma_0: np.ndarray,
                  c_0 : int = 3,
                  alpha: float = 0.99,
@@ -30,7 +30,7 @@ class OrderBasedLearner:
         else:
             self.T = T
 
-    def compute(self) -> (list[np.ndarray], list[list[nx.DiGraph]]):
+    def compute(self) -> (np.ndarray, list[list[nx.DiGraph]]):
         T = self.T
         K = len(self.X)
         sigma_prev = self.sigma_0
@@ -68,7 +68,7 @@ class OrderBasedLearner:
             sampled_orderings.append(sigma_prev)
             dags.append(G_hat_sigma_list_prev)
 
-        return sampled_orderings, dags
+        return np.array(sampled_orderings), dags
 
     def _compute_prior(self, G_hat_sigma_k_list: list[nx.DiGraph]) -> float:
         pi_k_G_k_sigma = []

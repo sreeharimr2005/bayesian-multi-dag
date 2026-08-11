@@ -45,7 +45,7 @@ def backward_edge_deletion(X: np.ndarray, j: int, score: Score, S_j: set[int]) -
 
     return S_j
 
-def edge_selection(d:int, X: np.ndarray, sigma: np.ndarray, score: Score) -> (list[set[int]], nx.DiGraph):
+def edge_selection(d: int, X: np.ndarray, sigma: np.ndarray, score: Score) -> (list[set[int]], nx.DiGraph):
     p = X.shape[1]
 
     parent_sets: list[set[int]] = [set() for _ in range(p)]

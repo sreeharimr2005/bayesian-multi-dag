@@ -1,5 +1,5 @@
-from forward_backward_edge_selection.score_function import Score
-from forward_backward_edge_selection.edge_operations import edge_selection
+from score_function import Score
+from edge_operations import edge_selection
 from bayesian_order_based_learning.random_to_random_neighborhood import R2R
 
 import networkx as nx
@@ -15,7 +15,8 @@ class OrderBasedLearner:
                  gamma: float = 0.01,
                  kappa: float = 0,
                  d: int | None = None,
-                 T: int | None = None):
+                 T: int | None = None,
+                 burn_in: float | None = None):
         self.X = X
         self.score = Score(c_0, alpha, gamma, kappa)
         self.sigma_0 = sigma_0
@@ -29,6 +30,11 @@ class OrderBasedLearner:
             self.T = 20 * (next(iter(X)).shape[1] ** 2)
         else:
             self.T = T
+
+        if burn_in is None:
+            self.burn_in = self.T / 2
+        else:
+            self.burn_in = burn_in
 
     def compute(self) -> (np.ndarray, list[list[nx.DiGraph]]):
         T = self.T
@@ -65,8 +71,9 @@ class OrderBasedLearner:
                 sigma_prev = sigma_curr
                 G_hat_sigma_list_prev = G_hat_sigma_list_curr
 
-            sampled_orderings.append(sigma_prev)
-            dags.append(G_hat_sigma_list_prev)
+            if t >= self.burn_in:
+                sampled_orderings.append(sigma_prev)
+                dags.append(G_hat_sigma_list_prev)
 
         return np.array(sampled_orderings), dags
 

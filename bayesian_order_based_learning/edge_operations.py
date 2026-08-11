@@ -13,11 +13,13 @@ def get_sigma_inverse(sigma: np.ndarray) -> np.ndarray:
     return inv
 
 def forward_edge_selection(d: int, X: np.ndarray, j: int, score: Score, sigma: np.ndarray) -> set[int]:
-    S_j = set()
+    sigma_inverse = get_sigma_inverse(sigma)
+    P_j_sigma = set(sigma_inverse[sigma_inverse < j])
 
+    S_j = set()
     while True:
-        sigma_inverse = get_sigma_inverse(sigma)
-        P_j_sigma = set(sigma_inverse[sigma_inverse < j])
+        if len(P_j_sigma - S_j) == 0:
+            break
 
         i_star = max(
             P_j_sigma - S_j,
@@ -55,6 +57,7 @@ def edge_selection(d: int, X: np.ndarray, sigma: np.ndarray, score: Score) -> (l
         parent_sets[j] = S_j
 
     G_hat_sigma = nx.DiGraph()
+    G_hat_sigma.add_nodes_from(range(p))
 
     for i, parent_set in enumerate(parent_sets):
         for parent in parent_set:

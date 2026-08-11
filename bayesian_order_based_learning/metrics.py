@@ -30,7 +30,7 @@ def rank_correlation(sigmas_predicted: np.ndarray, sigma_true: np.ndarray) -> fl
 
     unnormalized_tau_star = 0
     for t in range(T):
-        tau_t = kendalltau(sigma_true[t], sigmas_predicted[t]).statistic
+        tau_t = kendalltau(sigma_true, sigmas_predicted[t]).statistic
         unnormalized_tau_star += tau_t
 
     return unnormalized_tau_star / T

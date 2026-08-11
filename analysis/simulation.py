@@ -49,40 +49,47 @@ class Simulation:
         if self.burn_in is not None:
             kwargs["burn_in"] = self.burn_in
 
-        generated_datasets = []
-        G_hat_sigma_list = []
-        for k in range(self.datasets):
-            G_k = self._get_graph()
-            G_hat_sigma_list.append(G_k)
+        hds = []
+        tau_stars = []
+        for i in range(self.iterations):
+            generated_datasets = []
+            G_hat_sigma_list = []
+            for k in range(self.datasets):
+                G_k = self._get_graph()
+                G_hat_sigma_list.append(G_k)
 
-            dataset_k = np.zeros((self.n_k, p))
-            for node in G_k.nodes:
-                if G_k.predecessors(node) is None:
-                    dataset_k[:, node] = np.random.normal(0, error_variance, self.n_k)
+                dataset_k = np.zeros((self.n_k, p))
+                for node in nx.topological_sort(G_k):
+                    if G_k.in_degree(node) == 0:
+                        dataset_k[:, node] = np.random.normal(0, error_variance, self.n_k)
+                    else:
+                        dataset_k[:, node] = np.random.normal(0, error_variance, self.n_k)
+                        for parent in G_k.predecessors(node):
+                            dataset_k[:, node] += G_k[parent][node]["weight"] * dataset_k[:, parent]
 
-                for parent in G_k.predecessors(node):
-                    dataset_k[:, node] += G_k[parent][node]["weight"] * dataset_k[:, parent]
+                generated_datasets.append(dataset_k)
 
-            generated_datasets.append(dataset_k)
+            generated_datasets = np.array(generated_datasets)
 
-        generated_datasets = np.array(generated_datasets)
+            sigma_0 = np.arange(0, p)
+            obl = OrderBasedLearner(generated_datasets, sigma_0, **kwargs)
 
-        sigma_0 = np.arange(1, p + 1)
-        obl = OrderBasedLearner(generated_datasets, sigma_0, **kwargs)
+            predicted_orderings, predicted_dags = obl.compute()
+            predicted_adj_matrices = np.array([
+                [nx.to_numpy_array(G, dtype=np.dtype(int)) for G in predicted_dags_t]
+                for predicted_dags_t in predicted_dags
+            ])
+            true_adj_matrices = np.array([
+                nx.to_numpy_array(G, weight=None, dtype=np.dtype(int)) for G in G_hat_sigma_list
+            ])
 
-        predicted_orderings, predicted_dags = obl.compute()
-        predicted_adj_matrices = np.array([
-            [nx.to_numpy_array(G, dtype=np.dtype(int)) for G in predicted_dags_t]
-            for predicted_dags_t in predicted_dags
-        ])
-        true_adj_matrices = np.array([
-            nx.to_numpy_array(G, dtype=np.dtype(int)) for G in G_hat_sigma_list
-        ])
+            hd = [hamming_distance(predicted, true_adj_matrices) for predicted in predicted_adj_matrices]
+            hds.append(hd)
 
-        hd = [hamming_distance(predicted, true_adj_matrices) for predicted in predicted_adj_matrices]
-        tau_star = rank_correlation(predicted_orderings, self.sigma)
+            tau_star = rank_correlation(predicted_orderings, self.sigma)
+            tau_stars.append(tau_star)
 
-        return hd, tau_star
+        return hds, tau_stars
 
     def _get_graph(self) -> nx.DiGraph:
         G = nx.DiGraph()

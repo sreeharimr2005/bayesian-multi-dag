@@ -3,11 +3,18 @@ from edge_operations import edge_selection
 from bayesian_order_based_learning.random_to_random_neighborhood import R2R
 
 from concurrent.futures import ProcessPoolExecutor
+import ray
 
 from tqdm import tqdm
 import networkx as nx
 import numpy as np
 import random
+
+RAY_ADDRESS = None
+
+@ray.remote
+def _edge_selection_remote(d: int, X_k: np.ndarray, sigma: np.ndarray, score: Score):
+    return edge_selection(d, X_k, sigma, score)
 
 class OrderBasedLearner:
     def __init__(self,
@@ -42,6 +49,12 @@ class OrderBasedLearner:
 
         self.verbose = verbose
 
+        if not ray.is_initialized():
+            ray.init(address=RAY_ADDRESS)
+
+        self._score_ref = ray.put(self.score)
+        self._X_refs = [ray.put(self.X[k]) for k in range(self.X.shape[0])]
+
     def compute(self) -> (np.ndarray, list[list[nx.DiGraph]]):
         T = self.T
         K = len(self.X)
@@ -63,8 +76,8 @@ class OrderBasedLearner:
             sampled_orderings = []
             dags = []
             for t in tqdm(range(T), desc="MCMC Sampling wth R2R", disable=not self.verbose):
-                #sigma_curr = R2R.draw(R2R.get_neighborhood(sigma_prev))
-                sigma_curr = R2R.efficient_draw(sigma_prev)
+                sigma_curr = R2R.draw(R2R.get_neighborhood(sigma_prev))
+                #sigma_curr = R2R.efficient_draw(sigma_prev)
 
                 """
                 G_hat_sigma_list_curr = [None for _ in range(K)]
@@ -99,9 +112,20 @@ class OrderBasedLearner:
         return float(np.prod(pi_k_G_k_sigma))
 
     def _compute_graphs(self, executor, sigma: np.ndarray) -> list[nx.DiGraph]:
+        """
         futures = [
             executor.submit(edge_selection, self.d, self.X[k], sigma, self.score)
             for k in range(self.X.shape[0])
         ]
+        """
 
-        return [f.result()[1] for f in futures]
+        futures = [
+            _edge_selection_remote.remote(self.d, self._X_refs[k], sigma, self._score_ref)
+            for k in range(self.X.shape[0])
+        ]
+
+        results = ray.get(futures)
+        return [result[1] for result in results]
+
+    def shutdown(self):
+        ray.shutdown()

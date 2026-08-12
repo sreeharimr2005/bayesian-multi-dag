@@ -24,3 +24,17 @@ class R2R:
         idx = floor(random.uniform(0,1) * r2r_sigma.shape[0])
 
         return r2r_sigma[idx]
+
+    @staticmethod
+    def efficient_draw(sigma: np.ndarray) -> np.ndarray:
+        i = 0
+        j = 0
+
+        while not i == j:
+            i, j = random.sample(range(len(sigma)), 2)
+
+        sigma_j = sigma[j]
+        sigma_new = np.delete(sigma, j)
+        sigma_new = np.insert(sigma_new, i, sigma_j)
+
+        return sigma_new

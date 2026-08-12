@@ -21,12 +21,14 @@ def forward_edge_selection(d: int, X: np.ndarray, j: int, score: Score, sigma: n
         if len(P_j_sigma - S_j) == 0:
             break
 
+        base_score = score.local_score(X, j, S_j)
+
         i_star = max(
             P_j_sigma - S_j,
-            key=lambda i: score.local_score(X, j, S_j | {i}) - score.local_score(X, j, S_j)
+            key=lambda i: score.local_score(X, j, S_j | {i}) - base_score
         )
 
-        if (score.local_score(X, j, S_j | {i_star}) - score.local_score(X, j, S_j) > 0) and len(S_j) <= d:
+        if (score.local_score(X, j, S_j | {i_star}) - base_score > 0) and len(S_j) <= d:
             S_j.add(i_star)
         else:
             break
@@ -35,12 +37,14 @@ def forward_edge_selection(d: int, X: np.ndarray, j: int, score: Score, sigma: n
 
 def backward_edge_deletion(X: np.ndarray, j: int, score: Score, S_j: set[int]) -> set[int]:
     while not(len(S_j) == 0):
+        base_score = score.local_score(X, j, S_j)
+
         i_star = max(
             S_j,
-            key=lambda i: score.local_score(X, j, S_j - {i}) - score.local_score(X, j, S_j)
+            key=lambda i: score.local_score(X, j, S_j - {i}) - base_score
         )
 
-        if score.local_score(X, j, S_j - {i_star}) - score.local_score(X, j, S_j) > 0:
+        if score.local_score(X, j, S_j - {i_star}) - base_score > 0:
             S_j.remove(i_star)
         else:
             break

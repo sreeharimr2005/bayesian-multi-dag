@@ -14,7 +14,8 @@ def get_sigma_inverse(sigma: np.ndarray) -> np.ndarray:
 
 def forward_edge_selection(d: int, X: np.ndarray, j: int, score: Score, sigma: np.ndarray) -> set[int]:
     sigma_inverse = get_sigma_inverse(sigma)
-    P_j_sigma = set(sigma_inverse[sigma_inverse < j])
+    pos_j = sigma_inverse[j]
+    P_j_sigma = set(sigma[:pos_j].tolist())
 
     S_j = set()
     while True:
@@ -28,7 +29,7 @@ def forward_edge_selection(d: int, X: np.ndarray, j: int, score: Score, sigma: n
             key=lambda i: score.local_score(X, j, S_j | {i}) - base_score
         )
 
-        if (score.local_score(X, j, S_j | {i_star}) - base_score > 0) and len(S_j) <= d:
+        if len(S_j) <= d and (score.local_score(X, j, S_j | {i_star}) - base_score > 0):
             S_j.add(i_star)
         else:
             break

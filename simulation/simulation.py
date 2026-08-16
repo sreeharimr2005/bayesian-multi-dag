@@ -73,12 +73,14 @@ class Simulation:
 
             generated_datasets.append(dataset_k)
 
-        generated_datasets = np.array(generated_datasets)
+        # generated_datasets = np.array(generated_datasets)
 
         sigma_0 = np.arange(0, p)
         obl = OrderBasedLearner(generated_datasets, sigma_0, verbose=self.verbose, **kwargs)
 
-        predicted_orderings, predicted_dags = obl.compute()
+        predicted_orderings, predicted_dags, log_posteriors = obl.compute()
+        obl.shutdown()
+
         predicted_adj_matrices = np.array([
             [nx.to_numpy_array(G, dtype=np.dtype(int)) for G in predicted_dags_t]
             for predicted_dags_t in predicted_dags
@@ -90,7 +92,7 @@ class Simulation:
         hd = [hamming_distance(predicted, true_adj_matrices) for predicted in predicted_adj_matrices]
         tau_star = rank_correlation(predicted_orderings, self.sigma)
 
-        return hd, tau_star
+        return hd, tau_star, log_posteriors
 
     def _get_graph(self) -> nx.DiGraph:
         G = nx.DiGraph()

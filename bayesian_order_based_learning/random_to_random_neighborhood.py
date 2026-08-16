@@ -27,10 +27,9 @@ class R2R:
 
     @staticmethod
     def efficient_draw(sigma: np.ndarray) -> np.ndarray:
-        i = 0
-        j = 0
+        i, j = random.sample(range(len(sigma)), 2)
 
-        while not i == j:
+        while i == j:
             i, j = random.sample(range(len(sigma)), 2)
 
         sigma_j = sigma[j]

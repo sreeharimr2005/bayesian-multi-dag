@@ -23,7 +23,6 @@ class Score:
 
         first_half = self._const1 * cardinality
         second_half = self._const2 * log(n * self._calculate_residual_variance(X, j, candidates))
-
         return first_half + second_half
 
     def score(self, X: np.ndarray, G: nx.DiGraph) -> float:
@@ -51,4 +50,4 @@ class Score:
         )
         """
 
-        return n_reciprocal * float(residual @ residual)
+        return max(n_reciprocal * float(residual.T @ residual), 1e-10)

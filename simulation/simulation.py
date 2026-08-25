@@ -20,6 +20,9 @@ class Simulation:
         self.T = None
         self.burn_in = None
 
+        self._true_dags = None
+        self._true_posterior = None
+
     def modify_hyperparameters(self,
                                c_0: int = None,
                                alpha: float = None,
@@ -36,7 +39,7 @@ class Simulation:
         self.T = T
         self.burn_in = burn_in
 
-    def simulate(self) -> (list[float], float):
+    def simulate(self):
         p = len(self.sigma)
         error_variance = 1
         kwargs = {}
@@ -73,14 +76,17 @@ class Simulation:
 
             generated_datasets.append(dataset_k)
 
+        self._true_dags = G_hat_sigma_list
         # generated_datasets = np.array(generated_datasets)
 
         sigma_0 = np.arange(0, p)
         obl = OrderBasedLearner(generated_datasets, sigma_0, verbose=self.verbose, **kwargs)
+        self._true_posterior = obl.compute_posterior(self._true_dags)
 
         predicted_orderings, predicted_dags, log_posteriors = obl.compute()
         obl.shutdown()
 
+        """
         predicted_adj_matrices = np.array([
             [nx.to_numpy_array(G, dtype=np.dtype(int)) for G in predicted_dags_t]
             for predicted_dags_t in predicted_dags
@@ -91,17 +97,23 @@ class Simulation:
 
         hd = [hamming_distance(predicted, true_adj_matrices) for predicted in predicted_adj_matrices]
         tau_star = rank_correlation(predicted_orderings, self.sigma)
+        """
+        return predicted_orderings, predicted_dags, log_posteriors
 
-        return hd, tau_star, log_posteriors
+    def get_true_dags(self) -> list[nx.DiGraph]:
+        return self._true_dags
+
+    def get_true_posterior(self) -> float:
+        return self._true_posterior
 
     def _get_graph(self) -> nx.DiGraph:
         G = nx.DiGraph()
         p = len(self.sigma)
+        prob_edge = 3 / (2 * p - 2)
 
         G.add_nodes_from(range(p))
         for j in range(p):
             for i in range(j):
-                prob_edge = 3 / (2 * p - 2)
                 u = random.uniform(0, 1)
 
                 if u <= prob_edge:

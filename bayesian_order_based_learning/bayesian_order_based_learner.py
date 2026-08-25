@@ -72,7 +72,7 @@ class OrderBasedLearner:
             """
 
             G_hat_sigma_list_prev = self._compute_graphs(executor, self.sigma_0)
-            pi_sigma_prev = self._compute_posterior(G_hat_sigma_list_prev)
+            pi_sigma_prev = self.compute_posterior(G_hat_sigma_list_prev)
 
             sampled_orderings = []
             dags = []
@@ -91,7 +91,7 @@ class OrderBasedLearner:
                 """
 
                 G_hat_sigma_list_curr = self._compute_graphs(executor, sigma_curr)
-                pi_sigma_curr = self._compute_posterior(G_hat_sigma_list_curr)
+                pi_sigma_curr = self.compute_posterior(G_hat_sigma_list_curr)
 
                 a = min(np.exp(pi_sigma_curr - pi_sigma_prev), 1)
                 u = random.uniform(0, 1)
@@ -110,7 +110,7 @@ class OrderBasedLearner:
 
         return np.array(sampled_orderings), dags, log_posteriors
 
-    def _compute_posterior(self, G_hat_sigma_k_list: list[nx.DiGraph]) -> float:
+    def compute_posterior(self, G_hat_sigma_k_list: list[nx.DiGraph]) -> float:
         pi_k_G_k_sigma = []
         for k, G_hat_sigma_k in enumerate(G_hat_sigma_k_list):
             pi_k_G_k_sigma.append(self.score.score(self.X[k], G_hat_sigma_k))

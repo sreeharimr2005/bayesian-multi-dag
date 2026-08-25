@@ -9,20 +9,15 @@ class Score:
         self.alpha = alpha
         self.gamma = gamma
         self.kappa = kappa
-        self._const1 = None
-        self._const2 = None
 
     def local_score(self, X: np.ndarray, j: int, candidates: set[int]) -> float:
         cardinality = len(candidates)
         n = X.shape[0]
         p = X.shape[1]
 
-        if self._const1 is None:
-            self._const1 = -((self.c_0 * log(p)) + 0.5 * (log(1 + (self.alpha / self.gamma))))
-            self._const2 = -0.5 * ((self.alpha * n) + self.kappa)
+        first_half = -((self.c_0 * log(p)) + 0.5 * (log(1 + (self.alpha / self.gamma)))) * cardinality
+        second_half = -0.5 * ((self.alpha * n) + self.kappa) * log(n * self._calculate_residual_variance(X, j, candidates))
 
-        first_half = self._const1 * cardinality
-        second_half = self._const2 * log(n * self._calculate_residual_variance(X, j, candidates))
         return first_half + second_half
 
     def score(self, X: np.ndarray, G: nx.DiGraph) -> float:

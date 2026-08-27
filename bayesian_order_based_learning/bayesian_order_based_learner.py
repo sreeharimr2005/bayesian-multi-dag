@@ -93,10 +93,11 @@ class OrderBasedLearner:
                 G_hat_sigma_list_curr = self._compute_graphs(executor, sigma_curr)
                 pi_sigma_curr = self.compute_posterior(G_hat_sigma_list_curr)
 
-                a = min(np.exp(pi_sigma_curr - pi_sigma_prev), 1)
+                # a = min(np.exp(pi_sigma_curr - pi_sigma_prev), 1)
                 u = random.uniform(0, 1)
+                log_u = np.log(u)
 
-                if u <= a:
+                if log_u <= pi_sigma_curr - pi_sigma_prev:
                     sigma_prev = sigma_curr
                     G_hat_sigma_list_prev = G_hat_sigma_list_curr
                     pi_sigma_prev = pi_sigma_curr

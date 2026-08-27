@@ -1,6 +1,12 @@
 import numpy as np
 from scipy.stats import kendalltau
 
+def get_sigma_inverse(sigma: np.ndarray) -> np.ndarray:
+    inv = sigma.copy()
+    inv[sigma] = np.arange(len(sigma))
+
+    return inv
+
 # Empirical posterior edge inclusion probability
 def edge_probability(adj_matrices: np.ndarray, edge: tuple[int, int]) -> float:
     T = adj_matrices.shape[0]
@@ -13,24 +19,27 @@ def edge_probability(adj_matrices: np.ndarray, edge: tuple[int, int]) -> float:
 
 # Average Hamming distance
 def hamming_distance(predicted_adj_matrices: np.ndarray, adj_matrices_hat: np.ndarray) -> float:
-    K = predicted_adj_matrices.shape[0]
+    K = adj_matrices_hat.shape[0]
 
     sum = 0
     for k in range(K):
         predicted_adj_matrix_k = predicted_adj_matrices[k]
         adj_matrix_hat_k = adj_matrices_hat[k]
 
-        sum += (predicted_adj_matrix_k - adj_matrix_hat_k).sum()
+        sum += np.abs(predicted_adj_matrix_k - adj_matrix_hat_k).sum()
 
     return sum / K
 
 # Posterior mean rank correlation (Kendall’s tau)
 def rank_correlation(sigmas_predicted: np.ndarray, sigma_true: np.ndarray) -> float:
     T = sigmas_predicted.shape[0]
+    ranks_true = get_sigma_inverse(sigma_true)
 
     unnormalized_tau_star = 0
     for t in range(T):
-        tau_t = kendalltau(sigma_true, sigmas_predicted[t]).statistic
+        ranks_pred = get_sigma_inverse(sigmas_predicted[t])
+
+        tau_t = kendalltau(ranks_true, ranks_pred).statistic
         unnormalized_tau_star += tau_t
 
     return unnormalized_tau_star / T

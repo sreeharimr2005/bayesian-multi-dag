@@ -6,10 +6,9 @@ import networkx as nx
 import random
 
 class Simulation:
-    def __init__(self, sigma: np.ndarray, n_k: int, datasets: int, verbose: bool = False):
+    def __init__(self, sigma: np.ndarray, n_k: int, verbose: bool = False, K_list: list[int] = None):
         self.sigma = sigma
         self.n_k = n_k
-        self.datasets = datasets
         self.verbose = verbose
 
         self.c_0 = None
@@ -21,7 +20,13 @@ class Simulation:
         self.burn_in = None
 
         self._true_dags = None
-        self._true_posterior = None
+
+        if K_list is not None:
+            self.K_list = K_list
+            self._true_posteriors = [[] for _ in range(len(K_list))]
+        else:
+            self.K_list = [1]
+            self._true_posteriors = [[]]
 
     def modify_hyperparameters(self,
                                c_0: int = None,
@@ -59,32 +64,43 @@ class Simulation:
         if self.burn_in is not None:
             kwargs["burn_in"] = self.burn_in
 
-        generated_datasets = []
-        G_hat_sigma_list = []
-        for k in range(self.datasets):
-            G_k = self._get_graph()
-            G_hat_sigma_list.append(G_k)
+        generated_datasets = [[] for _ in range(len(self.K_list))]
+        G_hat_sigma_list = [[] for _ in range(len(self.K_list))]
+        G_true = self._get_graph()
 
-            dataset_k = np.zeros((self.n_k, p))
-            for node in nx.topological_sort(G_k):
-                if G_k.in_degree(node) == 0:
-                    dataset_k[:, node] = np.random.normal(0, error_variance, self.n_k)
-                else:
-                    dataset_k[:, node] = np.random.normal(0, error_variance, self.n_k)
-                    for parent in G_k.predecessors(node):
-                        dataset_k[:, node] += G_k[parent][node]["weight"] * dataset_k[:, parent]
+        for idx, K in enumerate(self.K_list):
+            for k in range(K):
+                G_k = G_true.copy()
+                if not k == 0:
+                    G_k = self._reweight_graph(G_k)
 
-            generated_datasets.append(dataset_k)
+                G_hat_sigma_list[idx].append(G_k)
+
+                dataset_k = np.zeros((self.n_k, p))
+                for node in nx.topological_sort(G_k):
+                    if G_k.in_degree(node) == 0:
+                        dataset_k[:, node] = np.random.normal(0, error_variance, self.n_k)
+                    else:
+                        dataset_k[:, node] = np.random.normal(0, error_variance, self.n_k)
+                        for parent in G_k.predecessors(node):
+                            dataset_k[:, node] += G_k[parent][node]["weight"] * dataset_k[:, parent]
+
+                generated_datasets[idx].append(dataset_k)
 
         self._true_dags = G_hat_sigma_list
         # generated_datasets = np.array(generated_datasets)
 
         sigma_0 = np.arange(0, p)
-        obl = OrderBasedLearner(generated_datasets, sigma_0, verbose=self.verbose, **kwargs)
-        self._true_posterior = obl.compute_posterior(self._true_dags)
 
-        predicted_orderings, predicted_dags, log_posteriors = obl.compute()
-        obl.shutdown()
+        predicted_orderings_list = [[] for _ in range(len(self.K_list))]
+        predicted_dags_list = [[] for _ in range(len(self.K_list))]
+        log_posteriors_list = [[] for _ in range(len(self.K_list))]
+        for idx in range(len(self.K_list)):
+            obl = OrderBasedLearner(generated_datasets[idx], sigma_0, verbose=self.verbose, **kwargs)
+            self._true_posteriors[idx] = obl.compute_posterior(self._true_dags[idx])
+
+            predicted_orderings_list[idx], predicted_dags_list[idx], log_posteriors_list[idx] = obl.compute()
+            obl.shutdown()
 
         """
         predicted_adj_matrices = np.array([
@@ -98,13 +114,13 @@ class Simulation:
         hd = [hamming_distance(predicted, true_adj_matrices) for predicted in predicted_adj_matrices]
         tau_star = rank_correlation(predicted_orderings, self.sigma)
         """
-        return predicted_orderings, predicted_dags, log_posteriors
+        return predicted_orderings_list, predicted_dags_list, log_posteriors_list
 
     def get_true_dags(self) -> list[nx.DiGraph]:
         return self._true_dags
 
-    def get_true_posterior(self) -> float:
-        return self._true_posterior
+    def get_true_posterior(self) -> list[float]:
+        return self._true_posteriors
 
     def _get_graph(self) -> nx.DiGraph:
         G = nx.DiGraph()
@@ -121,5 +137,16 @@ class Simulation:
                     if edge_weight >= 1:
                         edge_weight = edge_weight - 2
                     G.add_edge(self.sigma[i].item(), self.sigma[j].item(), weight=edge_weight)
+
+        return G
+
+    def _reweight_graph(self, G: nx.DiGraph) -> nx.DiGraph:
+        p = len(self.sigma)
+
+        for u, v in G.edges():
+            edge_weight = random.uniform(0.5, 1.5)
+            if edge_weight >= 1:
+                edge_weight = edge_weight - 2
+            G[u][v]["weight"] = edge_weight
 
         return G

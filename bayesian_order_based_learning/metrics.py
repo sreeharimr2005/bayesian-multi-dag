@@ -13,14 +13,14 @@ def edge_probability(adj_matrices: np.ndarray, edge: tuple[int, int]) -> float:
 
 # Average Hamming distance
 def hamming_distance(predicted_adj_matrices: np.ndarray, adj_matrices_hat: np.ndarray) -> float:
-    K = predicted_adj_matrices.shape[0]
+    K = adj_matrices_hat.shape[0]
 
     sum = 0
     for k in range(K):
         predicted_adj_matrix_k = predicted_adj_matrices[k]
         adj_matrix_hat_k = adj_matrices_hat[k]
 
-        sum += (predicted_adj_matrix_k - adj_matrix_hat_k).sum()
+        sum += np.abs(predicted_adj_matrix_k - adj_matrix_hat_k).sum()
 
     return sum / K
 
